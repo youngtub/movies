@@ -17,7 +17,7 @@ const PORT = process.env.PORT || 5000;
 
 app.use(bodyParser.json());
 
-app.use(express.static(path.resolve(__dirname, './public')));
+app.use(express.static(path.resolve(__dirname, 'client/build')));
 
 maskErrors(schema)
 app.use('/graphql', graphqlHTTP({

@@ -20,7 +20,7 @@ app.use(bodyParser.json());
 app.use(express.static(path.resolve(__dirname, 'ui/build')));
 
 maskErrors(schema)
-app.use('/graphql', graphqlHTTP({
+app.get('/graphql', graphqlHTTP({
   schema,
   graphiql: true
 }));

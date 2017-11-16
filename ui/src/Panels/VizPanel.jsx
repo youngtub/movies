@@ -28,6 +28,8 @@ class VizPanel extends React.Component {
   }
 
   componentDidMount() {
+    axios.get('/test')
+    .then((response) => console.log(response.data))
   };
 
   componentWillReceiveProps() {

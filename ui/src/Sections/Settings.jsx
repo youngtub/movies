@@ -23,7 +23,7 @@ class Settings extends React.Component {
     this.toggleRoles = this.toggleRoles.bind(this);
     this.setCircleSize = this.setCircleSize.bind(this);
     this.setLinkDistance = this.setLinkDistance.bind(this);
-    this.setArtistsNumber = this.setArtistsNumber.bind(this);
+    this.setMovieNumber = this.setMovieNumber.bind(this);
     this.toggleLabel = this.toggleLabel.bind(this);
   }
 
@@ -62,9 +62,9 @@ class Settings extends React.Component {
     })
   }
 
-  setArtistsNumber(val) {
+  setMovieNumber(val) {
     this.setState({
-      artistNumber: val
+      movieNumber: val
     }, () => {
       this.props.passStateInSettings(this.state)
     })
@@ -105,9 +105,9 @@ class Settings extends React.Component {
           <Col md={9}>
             <CheckboxGroup style={{marginLeft: '20%'}} options={checkBoxOptions} defaultValue={['rapper', 'producer']} onChange={this.toggleRoles} />
           </Col>
-        </Row>*/}
+        </Row>
 
-        <br/><hr/><br/>
+        <br/><hr/><br/>*/}
 
         <Row>
           <Col md={1} style={settingTypeStyle}>
@@ -133,10 +133,10 @@ class Settings extends React.Component {
 
         <Row>
           <Col md={2} style={settingTypeStyle}>
-            <p># of Movies: </p>
+            <p># of Sim Movies: </p>
           </Col>
           <Col md={7} style={button}>
-            <Slider style={sliderStyle} value={this.state.artistNumber} max={7} min={1} onChange={this.setArtistsNumber}/>
+            <Slider style={sliderStyle} value={this.state.movieNumber} max={7} min={1} onChange={this.setMovieNumber}/>
           </Col>
         </Row>
 

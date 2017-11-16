@@ -73,36 +73,49 @@ const InfoPanel = (props) => {
           <br/>
           <hr/>
           <br/>
-          <Row className="show-grid">
-            <Col md={3}>
-              Runtime: {props.selectedMovie.runtime}
-            </Col>
-            <Col md={3}>
-              Budget: {props.selectedMovie.budget}
-            </Col>
-            <Col md={3}>
-              Revenue: {props.selectedMovie.revenue}
-            </Col>
-            <Col md={3}>
-              Rating: {props.selectedMovie.voteAverage}
-            </Col>
-          </Row>
-          <br/>
-          <hr/>
-          <br/>
-          <Row>
-            <Col md={1}></Col>
-            <Col md={10}>
-              <div style={keywordsStyle}>
-            {props.selectedMovie.keywords ? (
-              props.selectedMovie.keywords.map((keyw, i) => (
-              <Tag key={i} className='keyword'>{keyw.word}</Tag>
-            ))
-          ) : null}
-          </div>
-            </Col>
-            <Col md={1}></Col>
-          </Row>
+
+          {props.selectedMovie.budget ? (
+            <div>
+            <Row className="show-grid">
+              <Col md={3}>
+                Runtime: {props.selectedMovie.runtime}
+              </Col>
+              <Col md={3}>
+                Budget: {props.selectedMovie.budget}
+              </Col>
+              <Col md={3}>
+                Revenue: {props.selectedMovie.revenue}
+              </Col>
+              <Col md={3}>
+                Rating: {props.selectedMovie.voteAverage}
+              </Col>
+            </Row>
+
+            <br/>
+            <hr/>
+            <br/>
+            <Row>
+              <Col md={1}></Col>
+              <Col md={10}>
+                <div style={keywordsStyle}>
+                  {props.selectedMovie.keywords ? (
+                    props.selectedMovie.keywords.map((keyw, i) => (
+                      <Tag key={i} className='keyword'>{keyw.word}</Tag>
+                    ))
+                  ) : null}
+                </div>
+              </Col>
+              <Col md={1}></Col>
+            </Row>
+            </div>
+          ) : (
+            <Row>
+              <Col md={12}>
+                <p style={{fontSize: '16px', textAlign: 'center'}}> Click this movie to get more details + similar movies! </p>
+              </Col>
+            </Row>
+          )
+        }
 
       </Grid>
 

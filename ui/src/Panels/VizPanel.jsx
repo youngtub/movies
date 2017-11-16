@@ -279,7 +279,7 @@ class VizPanel extends React.Component {
     .force("charge", d3.forceManyBody().strength(-90))
     .force("link", d3.forceLink(this.state.blinks)
       .distance((d) => {
-        return d.value > 1 ? linkDistance/(d.value/1.5) : linkDistance;
+        return d.value > 1 ? linkDistance/(d.value-1/1.5) : linkDistance;
       })
       // .strength((d) => {
       //   return d.value > 0 ? d.value*2 : 1;
@@ -380,6 +380,12 @@ if (label === 'image') {
       })
 
     });
+
+    node.on('mouseover', d => {
+      this.setState({
+        selectedMovie: d
+      })
+    })
 
       sim.on("tick", function() {
         link.attr("x1", function(d) { return d.source.x; })

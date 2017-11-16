@@ -29,4 +29,8 @@ app.listen(PORT, () => {
   console.log(`listening on port ${PORT}`);
 });
 
+app.use('/test', (req, res) => {
+  res.send('OK')
+})
+
 app.use('/api', router)

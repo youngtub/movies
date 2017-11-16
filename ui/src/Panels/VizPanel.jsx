@@ -47,7 +47,7 @@ class VizPanel extends React.Component {
   }
   sendRequestForMovies(q, type) {
     if (!this.isMovieAlreadySearched(q)) {
-    var movieName = encodeURI(q);
+    var movieName = encodeURIComponent(q);
     var qry = `query%20%7B%0A%20%20movie(title%3A%20%22${movieName}%22)%20%7B%0A%20%20%20%20title%0A%20%20%20%20id%0A%20%20%20%20overview%0A%20%20%20%20voteAverage%0A%20%20%20%20poster%0A%20%20%20%20details%20%7B%0A%20%20%20%20%20%20runtime%0A%20%20%20%20%20%20website%0A%20%20%20%20%20%20budget%0A%20%20%20%20%20%20revenue%0A%20%20%20%20%20%20tagline%0A%20%20%20%20%7D%0A%20%20%20%20%0A%20%20%20%20similar%20%7B%0A%20%20%20%20%09title%0A%20%20%20%20%09id%0A%20%20%20%20%09overview%0A%20%20%20%20%09voteAverage%0A%20%20%20%20%20%20poster%0A%20%20%20%20%7D%0A%20%20%20%20%0A%20%20%20%20recommendations%20%7B%0A%20%20%20%20%20%20title%0A%20%20%20%20%09id%0A%20%20%20%20%09overview%0A%20%20%20%20%09voteAverage%0A%20%20%20%20%20%20poster%0A%20%20%20%20%7D%0A%20%20%20%20%0A%20%20%20%20keywords%20%7B%0A%20%20%20%20%20%20id%0A%20%20%20%20%20%20word%0A%20%20%20%20%7D%0A%20%20%20%20%0A%20%20%7D%0A%7D%0A`
 
 
@@ -300,13 +300,13 @@ class VizPanel extends React.Component {
     // .force("distance", d3.forceManyBody(100))
 
     .force('collision', d3.forceCollide().radius((d) => {
-      return this.props.settings.circleSize || 30
+      return (this.props.settings.circleSize || 30) + 7
     }))
     .force("size", d3.forceManyBody([width, height]));
 
     var link = svg.selectAll(".link").data(this.state.blinks).enter()
         .append("line")
-        .attr("class", (d) => `link ${d.source.title.split(' ').join('')} ${d.target.title.split(' ').join('')} ${d.target.type}`)
+        .attr("class", (d) => `link ${d.source.title.replace(/\W+/g, " ")} ${d.target.title.replace(/\W+/g, " ")} ${d.target.type}`)
         .attr("stroke-width", (d) => d.value*3);
 
           $('.link').toggle();
@@ -346,7 +346,7 @@ if (label === 'image') {
   node.append("circle")
       .attr("r", (d) => this.getNodeSize(d.type))
       .attr("fill", (d) => d.common ? '#a32837' : this.getFillColor(d.type))
-      .attr("class", (d) => `${d.title.split(' ').join('')} node`)
+      .attr("class", (d) => `${d.title.replace(/\W+/g, " ")} node`)
       .style("stroke", (d) => d.search ? this.getFillColor(d.search.type) : null)
       .style("stroke-width", 3)
 
@@ -363,14 +363,14 @@ if (label === 'image') {
           .text(function(d) { return d.title })
           .style("font-size", "12px")
           .style("fill", (d) => d.type === 'primary' ? "#e8eaed" : "#262728")
-          .attr("class", (d) => `${d.title.split(' ').join('')}`)
+          .attr("class", (d) => `${d.title.replace(/\W+/g, " ")}`)
 
 } else {
 
   node.append("circle")
       .attr("r", (d) => this.getNodeSize(d.type))
       .attr("fill", (d) => d.common ? '#a32837' : this.getFillColor(d.type))
-      .attr("class", (d) => `${d.title.split(' ').join('')} node`)
+      .attr("class", (d) => `${d.title.replace(/\W+/g, " ")} node`)
       .style("stroke", (d) => d.search ? this.getFillColor(d.search.type) : null)
       .style("stroke-width", 3)
 
@@ -379,7 +379,7 @@ if (label === 'image') {
       .text(function(d) { return d.title })
       .style("font-size", "12px")
       .style("fill", (d) => d.type === 'primary' ? "#e8eaed" : "#262728")
-      .attr("class", (d) => `${d.title.split(' ').join('')}`)
+      .attr("class", (d) => `${d.title.replace(/\W+/g, " ")}`)
 }
 
     node.on('click', d => {
@@ -390,7 +390,7 @@ if (label === 'image') {
       })
 
       $('.link').css('display', 'none')
-      $(`.${movie.split(' ').join('')}.link`).toggle();
+      $(`.${movie.replace(/\W+/g, " ")}.link`).toggle();
 
       this.sendRequestForMovies(d.title, 'secondary');
       this.setState({
@@ -411,7 +411,10 @@ if (label === 'image') {
             .attr("x2", function(d) { return d.target.x; })
             .attr("y2", function(d) { return d.target.y; });
 
-        node.attr("transform", function(d) { return "translate(" + d.x + "," + d.y + ")"; });
+        node.attr("transform", function(d) {
+          var xcoord = d.x > width / 2 ? Math.min(d.x, width-circleSize) : Math.max(circleSize, d.x);
+          var ycoord = d.y > height / 2 ? Math.min(d.y, height-(circleSize+10)) : Math.max(circleSize, d.y);
+          return "translate(" + xcoord + "," + ycoord + ")"; });
         // svg.selectAll("g").attr("transform", function(d) { return "translate(" + d.x + "," + d.y + ")"; });
       });
 

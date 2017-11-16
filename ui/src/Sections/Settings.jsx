@@ -13,10 +13,10 @@ class Settings extends React.Component {
     this.state = {
       showLinks: false,
       roles: ['rapper', 'producer'],
-      label: 'text',
-      circleSize: 15,
+      label: 'image',
+      circleSize: 22,
       linkDistance: 200,
-      movieNumber: 4
+      movieNumber: 3
     }
     this.hideLinks = this.hideLinks.bind(this);
     this.showLinks = this.showLinks.bind(this);

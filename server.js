@@ -11,6 +11,7 @@ const schema = require('./graphql/moviesSchema.js')
 const { maskErrors } = require('graphql-errors');
 const router = require('./router.js')
 // const mongodb = require('./db/mongo.js');
+const compression = require('compression');
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -18,6 +19,7 @@ const PORT = process.env.PORT || 5000;
 app.use(bodyParser.json());
 
 app.use(express.static(path.resolve(__dirname, 'ui/build')));
+app.use(compression())
 
 maskErrors(schema)
 app.use('/graphql', graphqlHTTP({

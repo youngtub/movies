@@ -67,7 +67,7 @@ class VizPanel extends React.Component {
         keywords: resp.data.data.movie.keywords,
         type: type
       }
-      var movieNum = this.props.settings.movieNumber || 4;
+      var movieNum = this.props.settings.movieNumber || 3;
 
       var newSim = resp.data.data.movie.similar.slice(0, movieNum).map(movie => {
         movie['search'] = mov;
@@ -132,8 +132,11 @@ class VizPanel extends React.Component {
         // remove link between original movie and secondary node
         var originalLinks = this.state.blinks;
         var originalLinksTargetsTitles = originalLinks.reduce((acc, curr) => {acc.push(curr.target.title); return acc}, []);
-        var indexOfLinkToRemove = originalLinksTargetsTitles.indexOf(mov.title);
-        var removedLink = originalLinks.splice(indexOfLinkToRemove, 1);
+        var originalLinksSourceTitles = originalLinks.reduce((acc, curr) => {acc.push(curr.source.title); return acc}, []);
+        var indexOfLinkTargetToRemove = originalLinksTargetsTitles.indexOf(mov.title);
+        var indexOfLinkSourceToRemove = originalLinksSourceTitles.indexOf(mov.title);
+        var removedLinkTarget = originalLinks.splice(indexOfLinkTargetToRemove, 1);
+        // var removedLinkSource = originalLinks.splice(indexOfLinkSourceToRemove, 1);
 
         //compare existing connections and new commections for matches
         var newConnections = primaryAndConnections.slice(1);
@@ -276,28 +279,29 @@ class VizPanel extends React.Component {
         .attr("width", width)
         .attr("height", height);
 
-    var linkDistance = this.props.settings.linkDistance || 170;
-    var circleSize = this.props.settings.circleSize || 15;
-    var label = this.props.settings.label || 'text';
+    var linkDistance = this.props.settings.linkDistance || 200;
+    var circleSize = this.props.settings.circleSize || 22;
+    var label = this.props.settings.label || 'image';
 
     var sim = d3.forceSimulation(this.state.allMovies)
-    .force("charge", d3.forceManyBody().strength(-90))
+
     .force("link", d3.forceLink(this.state.blinks)
       .distance((d) => {
-        return d.value > 1 ? linkDistance/(d.value-1/1.5) : linkDistance;
+        return d.value > 1 ? linkDistance/(d.value-1) : linkDistance;
       })
       // .strength((d) => {
       //   return d.value > 0 ? d.value*2 : 1;
       // })
       )
+    .force("charge", d3.forceManyBody().strength(-150))
     .force("center", d3.forceCenter(400, 300))
-    // .force("gravity", d3.forceManyBody().strength(-50))
+    .force("gravity", d3.forceManyBody())
 
     // .force("distance", d3.forceManyBody(100))
 
-    // .force('collision', d3.forceCollide().radius(function(d) {
-    //   return 30
-    // }))
+    .force('collision', d3.forceCollide().radius((d) => {
+      return this.props.settings.circleSize || 30
+    }))
     .force("size", d3.forceManyBody([width, height]));
 
     var link = svg.selectAll(".link").data(this.state.blinks).enter()
@@ -341,16 +345,25 @@ if (label === 'image') {
 
   node.append("circle")
       .attr("r", (d) => this.getNodeSize(d.type))
-      .attr("fill", function(d) { return d.type === 'primary' ? '#241587' : '#3f88a3' })
-      .attr("class", (d) => `${d.title.split(' ').join('')} node`);
+      .attr("fill", (d) => d.common ? '#a32837' : this.getFillColor(d.type))
+      .attr("class", (d) => `${d.title.split(' ').join('')} node`)
+      .style("stroke", (d) => d.search ? this.getFillColor(d.search.type) : null)
+      .style("stroke-width", 3)
 
   node.append("svg:image")
-      .attr('x', -circleSize*1.5)
-      .attr('y', -circleSize*1.5)
-      .attr('width', circleSize*3)
-      .attr('height', circleSize*3)
+      .attr('x', -circleSize/2 - 7)
+      .attr('y', -circleSize/2)
+      .attr('width', circleSize*1.7)
+      .attr('height', circleSize*1.7)
       .attr("border-radius", '50%')
       .attr("xlink:href", (d) => `${d.poster}`)
+
+      node.append("text")
+          .attr("dx", -20).attr("dy", -37)
+          .text(function(d) { return d.title })
+          .style("font-size", "12px")
+          .style("fill", (d) => d.type === 'primary' ? "#e8eaed" : "#262728")
+          .attr("class", (d) => `${d.title.split(' ').join('')}`)
 
 } else {
 
@@ -362,7 +375,7 @@ if (label === 'image') {
       .style("stroke-width", 3)
 
   node.append("text")
-      .attr("dx", -15).attr("dy", ".70em")
+      .attr("dx", -20).attr("dy", -37)
       .text(function(d) { return d.title })
       .style("font-size", "12px")
       .style("fill", (d) => d.type === 'primary' ? "#e8eaed" : "#262728")
@@ -414,7 +427,7 @@ if (label === 'image') {
   }
 
   getNodeSize(type) {
-    let circleSize = this.props.settings.circleSize || 15;
+    let circleSize = this.props.settings.circleSize || 22;
     var sizes = {
       "primary": circleSize*2.5,
       "secondary": circleSize*1.7,

@@ -68,7 +68,7 @@ const InfoPanel = (props) => {
           </Row>
           <br/>
           <Row>
-            <p style={{textAlign: "center"}}><i>{props.selectedMovie.tagline ? `"${props.selectedMovie.tagline}"` : null}</i></p>
+            <p style={{textAlign: "center", height: '2vh', overflow: 'scroll'}}><i>{props.selectedMovie.tagline ? `"${props.selectedMovie.tagline}"` : null}</i></p>
           </Row>
           <br/>
           <hr/>
@@ -139,7 +139,7 @@ const overviewStyle = {
 }
 
 const keywordsStyle = {
-  height: '7vh',
+  height: '5vh',
   overflow: 'scroll'
 }
 

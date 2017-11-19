@@ -5,6 +5,8 @@ import Surch from '../Surch/Surch';
 import {Grid, Row, Col} from 'react-bootstrap';
 import $ from 'jquery';
 import axios from 'axios';
+import { ToastContainer, toast } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.min.css';
 
 class VizPanel extends React.Component {
   constructor(props) {
@@ -65,14 +67,16 @@ class VizPanel extends React.Component {
         runtime: resp.data.data.movie.details.runtime,
         tagline: resp.data.data.movie.details.tagline,
         keywords: resp.data.data.movie.keywords,
-        type: type
+        type: type,
+        surchCount: this.state.surchCount
       }
-      var movieNum = this.props.settings.movieNumber || 3;
+      var movieNum = this.props.settings.movieNumber || 4;
 
       var newSim = resp.data.data.movie.similar.slice(0, movieNum).map(movie => {
         movie['search'] = mov;
         movie['rel'] = 'sim';
         movie['type'] = 'conn';
+        movie['surchCount'] = this.state.surchCount
         return movie
       });
 
@@ -80,6 +84,7 @@ class VizPanel extends React.Component {
         movie['search'] = mov;
         movie['rel'] = 'rec';
         movie['type'] = 'conn'
+        movie['surchCount'] = this.state.surchCount
         return movie
       });
 
@@ -124,19 +129,29 @@ class VizPanel extends React.Component {
 
       } else if (this.state.allMovies.length > 0 && type === 'secondary') {
         // remove secondary node from initial allMovies
-        var originalNodes = this.state.allMovies;
+        var len = this.state.allMovies.length;
+        var originalNodes = this.state.allMovies.slice(0, len/2+1);
         var originalNodesTitles = originalNodes.reduce((acc, curr) => {acc.push(curr.title); return acc}, []);
         var indexOfNodeToRemove = originalNodesTitles.indexOf(mov.title);
         var removedNode = originalNodes.splice(indexOfNodeToRemove, 1);
         originalNodesTitles.splice(indexOfNodeToRemove, 1);
+
+        //remove links between current movie and removed links
+        var originalLinks = this.state.blinks.slice();
+        originalLinks.filter(link => {
+          return originalNodesTitles.includes(link.source.title) || originalNodesTitles.includes(link.target.title);
+        })
+
         // remove link between original movie and secondary node
-        var originalLinks = this.state.blinks;
+
         var originalLinksTargetsTitles = originalLinks.reduce((acc, curr) => {acc.push(curr.target.title); return acc}, []);
         var originalLinksSourceTitles = originalLinks.reduce((acc, curr) => {acc.push(curr.source.title); return acc}, []);
         var indexOfLinkTargetToRemove = originalLinksTargetsTitles.indexOf(mov.title);
         var indexOfLinkSourceToRemove = originalLinksSourceTitles.indexOf(mov.title);
         var removedLinkTarget = originalLinks.splice(indexOfLinkTargetToRemove, 1);
         // var removedLinkSource = originalLinks.splice(indexOfLinkSourceToRemove, 1);
+
+
 
         //compare existing connections and new commections for matches
         var newConnections = primaryAndConnections.slice(1);
@@ -151,6 +166,7 @@ class VizPanel extends React.Component {
                 "count": 1,
                 "movies": [this.state.selectedMovie, mov]
               }
+              this.toggleNotification()
             }
           }
         });
@@ -161,7 +177,7 @@ class VizPanel extends React.Component {
         var indexOfSecondary = newNodesTitles.indexOf(mov.title);
         var indexOfPrimary = newNodesTitles.indexOf(this.state.prevSelected.title)
         // add link from M1P to M2S
-        let bridgeLinkObj = { "source": indexOfPrimary, "target": indexOfSecondary, value: 3}
+        let bridgeLinkObj = { "source": indexOfPrimary, "target": indexOfSecondary, value: 2}
 
         // add links from M2S to all m2c's
         var linksToAdd = newNodes.reduce((acc, curr, i) => {
@@ -193,7 +209,8 @@ class VizPanel extends React.Component {
           selectedMovie: mov,
           allMovies: newNodes,
           blinks: newLinks,
-          display: 'viz'
+          display: 'viz',
+          surchCount: this.state.surchCount+1
         }, () => {
           console.log('state set', this.state)
           this.generateCharts();
@@ -217,6 +234,7 @@ class VizPanel extends React.Component {
                 "count": 1,
                 "movies": [this.state.selectedMovie, mov]
               }
+              this.toggleNotification()
             }
           }
         });
@@ -251,7 +269,6 @@ class VizPanel extends React.Component {
 
         var originalLinks = this.state.blinks;
         var newLinks = originalLinks.concat(linksToAdd)
-
         this.setState({
           selectedMovie: mov,
           allMovies: newNodes,
@@ -270,6 +287,7 @@ class VizPanel extends React.Component {
 
   generateCharts() {
     console.log('starting generate charts')
+    var that = this;
     d3.select('#canvas').selectAll('svg').remove();
 
     var width = 960,
@@ -279,7 +297,7 @@ class VizPanel extends React.Component {
         .attr("width", width)
         .attr("height", height);
 
-    var linkDistance = this.props.settings.linkDistance || 200;
+    var linkDistance = this.props.settings.linkDistance || 215;
     var circleSize = this.props.settings.circleSize || 22;
     var label = this.props.settings.label || 'image';
 
@@ -294,13 +312,13 @@ class VizPanel extends React.Component {
       // })
       )
     .force("charge", d3.forceManyBody().strength(-150))
-    .force("center", d3.forceCenter(400, 300))
-    .force("gravity", d3.forceManyBody())
+    .force("center", d3.forceCenter(400, 350))
+    // .force("gravity", d3.forceManyBody())
 
     // .force("distance", d3.forceManyBody(100))
 
     .force('collision', d3.forceCollide().radius((d) => {
-      return (this.props.settings.circleSize || 30) + 7
+      return this.getNodeSize(d)+15
     }))
     .force("size", d3.forceManyBody([width, height]));
 
@@ -341,20 +359,29 @@ function dragended() {
   d3.event.subject.fy = null;
 }
 
+var colors = {
+  0: '#424874',
+  1: '#6D435A',
+  2: '#84BCDA',
+  3: '#0C6291',
+  4: '#5C6672',
+  5: '#3A435E'
+}
+
 if (label === 'image') {
 
   node.append("circle")
-      .attr("r", (d) => this.getNodeSize(d.type))
-      .attr("fill", (d) => d.common ? '#a32837' : this.getFillColor(d.type))
+      .attr("r", (d) => this.getNodeSize(d))
+      .attr("fill", (d) => d.common ? '#a32837' : colors[d.surchCount])
       .attr("class", (d) => `${d.title.replace(/\W+/g, " ")} node`)
       .style("stroke", (d) => d.search ? this.getFillColor(d.search.type) : null)
-      .style("stroke-width", 3)
+      .style("stroke-width", d=> {console.log('D', d); return 3})
 
   node.append("svg:image")
-      .attr('x', -circleSize/2 - 7)
-      .attr('y', -circleSize/2)
-      .attr('width', circleSize*1.7)
-      .attr('height', circleSize*1.7)
+      .attr('x', d => -this.getNodeSize(d)/2 - 7)
+      .attr('y', d => -this.getNodeSize(d)/2)
+      .attr('width', d => this.getNodeSize(d)*1.3)
+      .attr('height', d => this.getNodeSize(d)*1.3)
       .attr("border-radius", '50%')
       .attr("xlink:href", (d) => `${d.poster}`)
 
@@ -368,8 +395,8 @@ if (label === 'image') {
 } else {
 
   node.append("circle")
-      .attr("r", (d) => this.getNodeSize(d.type))
-      .attr("fill", (d) => d.common ? '#a32837' : this.getFillColor(d.type))
+      .attr("r", (d) => this.getNodeSize(d))
+      .attr("fill", (d) => d.common ? '#a32837' : colors[d.surchCount])
       .attr("class", (d) => `${d.title.replace(/\W+/g, " ")} node`)
       .style("stroke", (d) => d.search ? this.getFillColor(d.search.type) : null)
       .style("stroke-width", 3)
@@ -391,10 +418,11 @@ if (label === 'image') {
 
       $('.link').css('display', 'none')
       $(`.${movie.replace(/\W+/g, " ")}.link`).toggle();
-
-      this.sendRequestForMovies(d.title, 'secondary');
+      d3.forceRadial(30, 400, 350).strength(40)
       this.setState({
         selectedMovie: d
+      }, () => {
+        this.sendRequestForMovies(d.title, 'secondary');
       })
 
     });
@@ -406,6 +434,7 @@ if (label === 'image') {
     })
 
       sim.on("tick", function() {
+
         link.attr("x1", function(d) { return d.source.x; })
             .attr("y1", function(d) { return d.source.y; })
             .attr("x2", function(d) { return d.target.x; })
@@ -415,8 +444,7 @@ if (label === 'image') {
           var xcoord = d.x > width / 2 ? Math.min(d.x, width-circleSize) : Math.max(circleSize, d.x);
           var ycoord = d.y > height / 2 ? Math.min(d.y, height-(circleSize+10)) : Math.max(circleSize, d.y);
           return "translate(" + xcoord + "," + ycoord + ")"; });
-        // svg.selectAll("g").attr("transform", function(d) { return "translate(" + d.x + "," + d.y + ")"; });
-      });
+        });
 
   };
 
@@ -429,14 +457,15 @@ if (label === 'image') {
     return colors[type];
   }
 
-  getNodeSize(type) {
+  getNodeSize(d) {
     let circleSize = this.props.settings.circleSize || 22;
+    if (d.common) return circleSize*2.2
     var sizes = {
       "primary": circleSize*2.5,
       "secondary": circleSize*1.7,
       "conn": circleSize*1.5
     }
-    return sizes[type];
+    return sizes[d.type];
   }
 
   applySurchCb(surchArr) {
@@ -451,6 +480,10 @@ if (label === 'image') {
     }, () => {
       this.generateCharts();
     })
+  }
+
+  toggleNotification = () => {
+    toast("Nice one! You found a mutually related movie", {className: 'commonNotif'})
   }
 
   render() {
@@ -480,7 +513,14 @@ if (label === 'image') {
             </Col>
 
           </Row>
-
+          <ToastContainer
+            position="top-right"
+            autoClose={10000}
+            hideProgressBar={false}
+            newestOnTop={false}
+            closeOnClick
+            pauseOnHover
+        />
         </Grid>
     )
   }

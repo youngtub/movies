@@ -32,7 +32,14 @@ class App extends Component {
       <div className="App">
         <header className="App-header">
           <ScrollableAnchor id={'main'}>
-          <h2> Movies </h2>
+          <Row>
+            <Col md={1}>
+              <h2 className='Balmain'> Surf </h2>
+            </Col>
+            <Col md={1}>
+              <h2 style={movieHeaderStyle}> Movies </h2>
+            </Col>
+          </Row>
           </ScrollableAnchor>
         </header>
         <Grid fluid={true}>
@@ -51,33 +58,28 @@ class App extends Component {
 
 
       <ScrollableAnchor id={'about'}>
-        <hr/>
+        <div>
+        <br/><br/>
+        <hr/><br/><br/>
+        </div>
       </ScrollableAnchor>
-        <Row style={aboutStyle}>
+        {/*<Row style={aboutStyle}>
           <br/>
           <About/>
           <br/><br/><hr/><br/><br/>
-        </Row>
+        </Row>*/}
 
-
-        <ScrollableAnchor id={'contribute'}>
-        <Row>
-          <Contribute />
-        </Row>
-        </ScrollableAnchor>
-
-        <Row>
-          <Col md={12} style={surfStyle}>
-            <div style={surfStyle}>
-              {/*<a style={black}> Powered by </a>*/}
-              <h2 className='Balmain'> Surf </h2>
-              </div>
-              </Col>
-            </Row>
         </Grid>
       </div>
     );
   }
+}
+
+const movieHeaderStyle = {
+  marginLeft: '24%',
+  marginTop: '4%',
+  fontFamily: 'Montserrat',
+  fontSize: '44px'
 }
 
 const surfStyle = {

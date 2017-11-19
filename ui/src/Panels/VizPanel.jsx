@@ -301,12 +301,21 @@ class VizPanel extends React.Component {
 
         var originalLinks = this.state.blinks;
         var newLinks = originalLinks.concat(linksToAdd)
+
+        let newHistoryObj = {
+          "main": mov,
+          "nodes": primaryAndConnections
+        }
+        var newHistoryArr = this.state.history.slice();
+        newHistoryArr.push(newHistoryObj)
+
         this.setState({
           selectedMovie: mov,
           allMovies: newNodes,
           blinks: newLinks,
           display: 'viz',
-          surchCount: this.state.surchCount+1
+          surchCount: this.state.surchCount+1,
+          history: newHistoryArr
         }, () => {
           console.log('state set', this.state)
           this.generateCharts();

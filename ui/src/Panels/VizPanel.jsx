@@ -18,7 +18,7 @@ class VizPanel extends React.Component {
       display: 'welcome',
       allMovies: [],
       surchCount: 0,
-      prevSelected: {}
+      history: {},
     }
     this.generateCharts = this.generateCharts.bind(this);
     this.applySurchCb = this.applySurchCb.bind(this);
@@ -115,31 +115,54 @@ class VizPanel extends React.Component {
           return acc;
         }, [])
 
+        let historyObj = {
+          "main": mov,
+          "nodes": primaryAndConnections
+        }
+
         this.setState({
           selectedMovie: mov,
           allMovies: primaryAndConnections,
           blinks: firstTimeLinks,
           display: 'viz',
           surchCount: this.state.surchCount+1,
-          prevSelected: mov
+          history: [historyObj]
         }, () => {
           console.log('state set', this.state)
           this.generateCharts();
         })
 
       } else if (this.state.allMovies.length > 0 && type === 'secondary') {
-        // remove secondary node from initial allMovies
-        var len = this.state.allMovies.length;
-        var originalNodes = this.state.allMovies.slice(0, len/2+1);
+        //get first half of movies from last level of history
+        var historyCopy = this.state.history.slice();
+        var originalNodes = [];
+        var tempTitles = [];
+        historyCopy.forEach((search, count) => {
+          var len = search.nodes.length-1;
+          search.nodes.forEach((node, i) => {
+            if(node.type === 'primary' || node.type === 'secondary') {
+              originalNodes.unshift(node);
+              tempTitles.push(node.title)
+            }
+            if (!tempTitles.includes(node.title) && node.type==='conn' && (i < (len+count*2)/2 - 1)) {
+              originalNodes.push(node);
+              tempTitles.push(node.title)
+            }
+          })
+        })
+
+        console.log('NODES NOW', originalNodes)
+        // remove secondary node from initial allMovies NOT NECESSARY BECAUSE OF HISTORY?
+
         var originalNodesTitles = originalNodes.reduce((acc, curr) => {acc.push(curr.title); return acc}, []);
         var indexOfNodeToRemove = originalNodesTitles.indexOf(mov.title);
         var removedNode = originalNodes.splice(indexOfNodeToRemove, 1);
         originalNodesTitles.splice(indexOfNodeToRemove, 1);
 
-        //remove links between current movie and removed links
+        //remove links between current movie and removed movies
         var originalLinks = this.state.blinks.slice();
         originalLinks.filter(link => {
-          return originalNodesTitles.includes(link.source.title) || originalNodesTitles.includes(link.target.title);
+          return originalNodesTitles.includes(link.source.title) && originalNodesTitles.includes(link.target.title);
         })
 
         // remove link between original movie and secondary node
@@ -151,11 +174,9 @@ class VizPanel extends React.Component {
         var removedLinkTarget = originalLinks.splice(indexOfLinkTargetToRemove, 1);
         // var removedLinkSource = originalLinks.splice(indexOfLinkSourceToRemove, 1);
 
-
-
         //compare existing connections and new commections for matches
         var newConnections = primaryAndConnections.slice(1);
-        newConnections.forEach(mov => {
+        newConnections.forEach((mov, i) => {
           if (originalNodesTitles.includes(mov.title)) {
             let indOfCommonInEdited = originalNodesTitles.indexOf(mov.title);
             let nodeToRemove = originalNodes[indOfCommonInEdited]
@@ -166,7 +187,9 @@ class VizPanel extends React.Component {
                 "count": 1,
                 "movies": [this.state.selectedMovie, mov]
               }
-              this.toggleNotification()
+              this.toggleNotification(mov)
+            } else {
+              primaryAndConnections.splice(i+1, 1)
             }
           }
         });
@@ -175,7 +198,9 @@ class VizPanel extends React.Component {
         var newNodes = originalNodes.concat(primaryAndConnections);
         var newNodesTitles = newNodes.reduce((acc, curr) => {acc.push(curr.title); return acc;}, []);
         var indexOfSecondary = newNodesTitles.indexOf(mov.title);
-        var indexOfPrimary = newNodesTitles.indexOf(this.state.prevSelected.title)
+        var prevSelected = this.state.history[this.state.surchCount-1].main
+        console.log('PREV SELECTED', prevSelected)
+        var indexOfPrimary = newNodesTitles.indexOf(prevSelected.title)
         // add link from M1P to M2S
         let bridgeLinkObj = { "source": indexOfPrimary, "target": indexOfSecondary, value: 2}
 
@@ -204,15 +229,21 @@ class VizPanel extends React.Component {
         var newLinks = originalLinks.concat(linksToAdd)
         newLinks.push(bridgeLinkObj);
         console.log('NEW LINKS', newLinks);
-
+        let historyObj = {
+          "main": mov,
+          "nodes": primaryAndConnections
+        }
+        var newHistoryArr = this.state.history.slice();
+        newHistoryArr.push(historyObj)
         this.setState({
           selectedMovie: mov,
           allMovies: newNodes,
           blinks: newLinks,
           display: 'viz',
-          surchCount: this.state.surchCount+1
+          surchCount: this.state.surchCount+1,
+          history: newHistoryArr
         }, () => {
-          console.log('state set', this.state)
+          console.log('state set after secondary', this.state)
           this.generateCharts();
         })
 
@@ -234,7 +265,7 @@ class VizPanel extends React.Component {
                 "count": 1,
                 "movies": [this.state.selectedMovie, mov]
               }
-              this.toggleNotification()
+              this.toggleNotification(mov)
             }
           }
         });
@@ -243,7 +274,8 @@ class VizPanel extends React.Component {
         var newNodes = originalNodes.concat(primaryAndConnections);
         var newNodesTitles = newNodes.reduce((acc, curr) => {acc.push(curr.title); return acc;}, []);
         var indexOfNewPrimary = newNodesTitles.indexOf(mov.title);
-        var indexOfPrimary = newNodesTitles.indexOf(this.state.prevSelected.title)
+        var prevSelected = this.state.history[this.state.surchCount-1].main
+        var indexOfPrimary = newNodesTitles.indexOf(prevSelected.title)
 
         // add links from M2S to all m2c's
         var linksToAdd = newNodes.reduce((acc, curr, i) => {
@@ -290,14 +322,14 @@ class VizPanel extends React.Component {
     var that = this;
     d3.select('#canvas').selectAll('svg').remove();
 
-    var width = 960,
+    var width = 800,
         height = 700
 
     var svg = d3.select("#canvas").append("svg")
         .attr("width", width)
         .attr("height", height);
 
-    var linkDistance = this.props.settings.linkDistance || 215;
+    var linkDistance = this.props.settings.linkDistance || 150;
     var circleSize = this.props.settings.circleSize || 22;
     var label = this.props.settings.label || 'image';
 
@@ -305,20 +337,20 @@ class VizPanel extends React.Component {
 
     .force("link", d3.forceLink(this.state.blinks)
       .distance((d) => {
-        return d.value > 1 ? linkDistance/(d.value-1) : linkDistance;
+        return d.value > 1 ? linkDistance/(d.value) : linkDistance;
       })
       // .strength((d) => {
       //   return d.value > 0 ? d.value*2 : 1;
       // })
       )
-    .force("charge", d3.forceManyBody().strength(-150))
+    .force("charge", d3.forceManyBody().strength(-180))
     .force("center", d3.forceCenter(400, 350))
-    // .force("gravity", d3.forceManyBody())
+    .force("gravity", d3.forceManyBody().strength(-40))
 
     // .force("distance", d3.forceManyBody(100))
 
     .force('collision', d3.forceCollide().radius((d) => {
-      return this.getNodeSize(d)+15
+      return this.getNodeSize(d)+55
     }))
     .force("size", d3.forceManyBody([width, height]));
 
@@ -365,7 +397,9 @@ var colors = {
   2: '#84BCDA',
   3: '#0C6291',
   4: '#5C6672',
-  5: '#3A435E'
+  5: '#3A435E',
+  6: '#5D5179',
+  7: '#75B9BE'
 }
 
 if (label === 'image') {
@@ -375,7 +409,7 @@ if (label === 'image') {
       .attr("fill", (d) => d.common ? '#a32837' : colors[d.surchCount])
       .attr("class", (d) => `${d.title.replace(/\W+/g, " ")} node`)
       .style("stroke", (d) => d.search ? this.getFillColor(d.search.type) : null)
-      .style("stroke-width", d=> {console.log('D', d); return 3})
+      .style("stroke-width", 3)
 
   node.append("svg:image")
       .attr('x', d => -this.getNodeSize(d)/2 - 7)
@@ -428,6 +462,7 @@ if (label === 'image') {
     });
 
     node.on('mouseover', d => {
+      console.log('THIS NODE', d)
       this.setState({
         selectedMovie: d
       })
@@ -441,8 +476,8 @@ if (label === 'image') {
             .attr("y2", function(d) { return d.target.y; });
 
         node.attr("transform", function(d) {
-          var xcoord = d.x > width / 2 ? Math.min(d.x, width-circleSize) : Math.max(circleSize, d.x);
-          var ycoord = d.y > height / 2 ? Math.min(d.y, height-(circleSize+10)) : Math.max(circleSize, d.y);
+          var xcoord = d.x > width / 2 ? Math.min(d.x-30, width-(circleSize+30)) : Math.max(circleSize+25, d.x+25);
+          var ycoord = d.y > height / 2 ? Math.min(d.y-30, height-(circleSize+30)) : Math.max(circleSize+30, d.y+30);
           return "translate(" + xcoord + "," + ycoord + ")"; });
         });
 
@@ -462,7 +497,7 @@ if (label === 'image') {
     if (d.common) return circleSize*2.2
     var sizes = {
       "primary": circleSize*2.5,
-      "secondary": circleSize*1.7,
+      "secondary": circleSize*2,
       "conn": circleSize*1.5
     }
     return sizes[d.type];
@@ -482,8 +517,8 @@ if (label === 'image') {
     })
   }
 
-  toggleNotification = () => {
-    toast("Nice one! You found a mutually related movie", {className: 'commonNotif'})
+  toggleNotification = (mov) => {
+    toast(`Nice one! You found a mutually related movie, ${mov.title || ''}`, {className: 'commonNotif'})
   }
 
   render() {

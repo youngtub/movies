@@ -144,7 +144,7 @@ class VizPanel extends React.Component {
               originalNodes.unshift(node);
               tempTitles.push(node.title)
             }
-            if (!tempTitles.includes(node.title) && node.type==='conn' && (i < (len+count*2)/2 - 1)) {
+            if (!tempTitles.includes(node.title) && node.type==='conn' && (i <= (len+count*2)/2)) {
               originalNodes.push(node);
               tempTitles.push(node.title)
             }

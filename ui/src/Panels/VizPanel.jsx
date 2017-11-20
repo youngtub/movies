@@ -18,7 +18,7 @@ class VizPanel extends React.Component {
       display: 'welcome',
       allMovies: [],
       surchCount: 0,
-      history: {},
+      history: [],
     }
     this.generateCharts = this.generateCharts.bind(this);
     this.applySurchCb = this.applySurchCb.bind(this);
@@ -68,7 +68,9 @@ class VizPanel extends React.Component {
         tagline: resp.data.data.movie.details.tagline,
         keywords: resp.data.data.movie.keywords,
         type: type,
-        surchCount: this.state.surchCount
+        surchCount: this.state.surchCount,
+        children: [],
+        parent: {}
       }
       var movieNum = this.props.settings.movieNumber || 4;
 
@@ -76,7 +78,9 @@ class VizPanel extends React.Component {
         movie['search'] = mov;
         movie['rel'] = 'sim';
         movie['type'] = 'conn';
-        movie['surchCount'] = this.state.surchCount
+        movie['surchCount'] = this.state.surchCount;
+        movie['parent'] = mov;
+        movie['children'] = [];
         return movie
       });
 
@@ -85,6 +89,8 @@ class VizPanel extends React.Component {
         movie['rel'] = 'rec';
         movie['type'] = 'conn'
         movie['surchCount'] = this.state.surchCount
+        movie['parent'] = mov;
+        movie['children'] = [];
         return movie
       });
 
@@ -100,6 +106,7 @@ class VizPanel extends React.Component {
       }
 
       var primaryAndConnections = [mov].concat(uniqueConnections);
+      // console.log('INCOMING P&C', primaryAndConnections)
 
       //Movies
 
@@ -114,6 +121,9 @@ class VizPanel extends React.Component {
           }
           return acc;
         }, [])
+
+        mov['parent'] = null;
+        mov['children'] = primaryAndConnections.slice(1)
 
         let historyObj = {
           "main": mov,
@@ -134,45 +144,25 @@ class VizPanel extends React.Component {
 
       } else if (this.state.allMovies.length > 0 && type === 'secondary') {
         //get first half of movies from last level of history
-        var historyCopy = this.state.history.slice();
-        var originalNodes = [];
+        var historyCopy = this.state.history.slice(-2);
+        // console.log('history copy', historyCopy)
         var tempTitles = [];
-        historyCopy.forEach((search, count) => {
-          var len = search.nodes.length-1;
-          search.nodes.forEach((node, i) => {
-            if(node.type === 'primary' || node.type === 'secondary') {
-              originalNodes.unshift(node);
-              tempTitles.push(node.title)
-            }
-            if (!tempTitles.includes(node.title) && node.type==='conn' && (i <= (len+count*2)/2)) {
-              originalNodes.push(node);
-              tempTitles.push(node.title)
-            }
-          })
+        var originalNodes = [];
+        historyCopy.forEach(search => {
+          // console.log('SEARCH', search)
+          var uniqueNodes = search.nodes.filter(movie => !tempTitles.includes(movie.title));
+          originalNodes = originalNodes.concat(uniqueNodes.slice(0, 4));
+          let tempTitlesUpdate = originalNodes.reduce((acc, curr) => {acc.push(curr.title); return acc}, []);
+          tempTitles = tempTitlesUpdate;
         })
 
-        console.log('NODES NOW', originalNodes)
-        // remove secondary node from initial allMovies NOT NECESSARY BECAUSE OF HISTORY?
+        // remove secondary node from initial allMovies
 
-        var originalNodesTitles = originalNodes.reduce((acc, curr) => {acc.push(curr.title); return acc}, []);
+        // var originalNodesTitles = originalNodes.reduce((acc, curr) => {acc.push(curr.title); return acc}, []);
+        var originalNodesTitles = tempTitles;
         var indexOfNodeToRemove = originalNodesTitles.indexOf(mov.title);
         var removedNode = originalNodes.splice(indexOfNodeToRemove, 1);
         originalNodesTitles.splice(indexOfNodeToRemove, 1);
-
-        //remove links between current movie and removed movies
-        var originalLinks = this.state.blinks.slice();
-        originalLinks.filter(link => {
-          return originalNodesTitles.includes(link.source.title) && originalNodesTitles.includes(link.target.title);
-        })
-
-        // remove link between original movie and secondary node
-
-        var originalLinksTargetsTitles = originalLinks.reduce((acc, curr) => {acc.push(curr.target.title); return acc}, []);
-        var originalLinksSourceTitles = originalLinks.reduce((acc, curr) => {acc.push(curr.source.title); return acc}, []);
-        var indexOfLinkTargetToRemove = originalLinksTargetsTitles.indexOf(mov.title);
-        var indexOfLinkSourceToRemove = originalLinksSourceTitles.indexOf(mov.title);
-        var removedLinkTarget = originalLinks.splice(indexOfLinkTargetToRemove, 1);
-        // var removedLinkSource = originalLinks.splice(indexOfLinkSourceToRemove, 1);
 
         //compare existing connections and new commections for matches
         var newConnections = primaryAndConnections.slice(1);
@@ -180,65 +170,63 @@ class VizPanel extends React.Component {
           if (originalNodesTitles.includes(mov.title)) {
             let indOfCommonInEdited = originalNodesTitles.indexOf(mov.title);
             let nodeToRemove = originalNodes[indOfCommonInEdited]
-            if (nodeToRemove.type !== 'primary' && nodeToRemove.type !== 'secondary') {
+            // console.log('NODE TO REMOVE', nodeToRemove)
+            if (nodeToRemove && nodeToRemove.type !== 'primary' && nodeToRemove.type !== 'secondary') {
               var removed = originalNodes.splice(indOfCommonInEdited, 1);
-              console.log('REMOVED FOR COMMON', removed)
+              // console.log('REMOVED FOR COMMON', removed)
               mov["common"] = {
                 "count": 1,
                 "movies": [this.state.selectedMovie, mov]
               }
               this.toggleNotification(mov)
             } else {
-              primaryAndConnections.splice(i+1, 1)
+              if(nodeToRemove) primaryAndConnections.splice(i+1, 1)
             }
           }
         });
 
+        primaryAndConnections[0]['parent'] = historyCopy[historyCopy.length-1].main
+        primaryAndConnections[0]['children'] = primaryAndConnections.slice(1);
+
+        // console.log('NEW CHILDREN', primaryAndConnections[0]['children'])
+
         // add new primary and connections to nodes list
-        var newNodes = originalNodes.concat(primaryAndConnections);
-        var newNodesTitles = newNodes.reduce((acc, curr) => {acc.push(curr.title); return acc;}, []);
-        var indexOfSecondary = newNodesTitles.indexOf(mov.title);
-        var prevSelected = this.state.history[this.state.surchCount-1].main
-        console.log('PREV SELECTED', prevSelected)
-        var indexOfPrimary = newNodesTitles.indexOf(prevSelected.title)
-        // add link from M1P to M2S
-        let bridgeLinkObj = { "source": indexOfPrimary, "target": indexOfSecondary, value: 2}
+        var nodes = originalNodes.concat(primaryAndConnections);
+        var nodesNames = nodes.reduce((acc, curr) => {acc.push(curr.title); return acc;}, []);
 
-        // add links from M2S to all m2c's
-        var linksToAdd = newNodes.reduce((acc, curr, i) => {
-          if (i <= indexOfSecondary) {}
-          else {
-            // special links for common connections
-            if (curr.common) {
-              let commonLinkObjs = [
-                { "source": indexOfPrimary, "target": i, value: 1+curr.common.count},
-                {"source": indexOfSecondary, "target": i, value: 1+curr.common.count}
-              ]
-              acc = acc.concat(commonLinkObjs)
-            } else {
-              let tempLinkObj = {
-                "source": indexOfSecondary, "target": i, value: 1
-              }
-              acc.push(tempLinkObj);
+        var links = [];
+
+        var calculateLinks = (node) => {
+          if (node.children.length === 0) {
+            return;
+          } else {
+            for (let i = 0; i < node.children.length; i++) {
+              let child = node.children[i];
+              let tempLinkObj = { source: node, target: child, value: 1 }
+              links.push(tempLinkObj)
+              if (child.children.length > 0) calculateLinks(child)
             }
-
           }
-          return acc;
-        }, []);
+        }
 
-        var newLinks = originalLinks.concat(linksToAdd)
-        newLinks.push(bridgeLinkObj);
-        console.log('NEW LINKS', newLinks);
+        nodes.forEach(calculateLinks);
+
+        // console.log('TREE LINKS', links)
+
+        links = links.filter(link => nodesNames.includes(link.source.title) && nodesNames.includes(link.target.title))
+
         let historyObj = {
           "main": mov,
           "nodes": primaryAndConnections
         }
+
         var newHistoryArr = this.state.history.slice();
         newHistoryArr.push(historyObj)
+
         this.setState({
           selectedMovie: mov,
-          allMovies: newNodes,
-          blinks: newLinks,
+          allMovies: nodes,
+          blinks: links,
           display: 'viz',
           surchCount: this.state.surchCount+1,
           history: newHistoryArr
@@ -251,16 +239,16 @@ class VizPanel extends React.Component {
         console.log('in surch case', q)
         var originalNodes = this.state.allMovies;
         var originalNodesTitles = originalNodes.reduce((acc, curr) => {acc.push(curr.title); return acc}, []);
-
+        mov['parent'] = null;
         //compare for connections
         var newConnections = primaryAndConnections.slice(1);
         newConnections.forEach(mov => {
           if (originalNodesTitles.includes(mov.title)) {
             let indOfCommonInEdited = originalNodesTitles.indexOf(mov.title);
             let nodeToRemove = originalNodes[indOfCommonInEdited]
-            if (nodeToRemove.type !== 'primary' && nodeToRemove.type !== 'secondary') {
+            if (nodeToRemove && nodeToRemove.type !== 'primary' && nodeToRemove.type !== 'secondary') {
               var removed = originalNodes.splice(indOfCommonInEdited, 1);
-              console.log('REMOVED FOR COMMON', removed)
+              // console.log('REMOVED FOR COMMON', removed)
               mov["common"] = {
                 "count": 1,
                 "movies": [this.state.selectedMovie, mov]
@@ -327,7 +315,7 @@ class VizPanel extends React.Component {
   }
 
   generateCharts() {
-    console.log('starting generate charts')
+    // console.log('starting generate charts')
     var that = this;
     d3.select('#canvas').selectAll('svg').remove();
 
@@ -338,7 +326,7 @@ class VizPanel extends React.Component {
         .attr("width", width)
         .attr("height", height);
 
-    var linkDistance = this.props.settings.linkDistance || 150;
+    var linkDistance = this.props.settings.linkDistance || 200;
     var circleSize = this.props.settings.circleSize || 22;
     var label = this.props.settings.label || 'image';
 
@@ -346,15 +334,15 @@ class VizPanel extends React.Component {
 
     .force("link", d3.forceLink(this.state.blinks)
       .distance((d) => {
-        return d.value > 1 ? linkDistance/(d.value) : linkDistance;
+        return d.value > 0 ? linkDistance/(d.value) : linkDistance;
       })
       // .strength((d) => {
       //   return d.value > 0 ? d.value*2 : 1;
       // })
       )
-    .force("charge", d3.forceManyBody().strength(-180))
+    .force("charge", d3.forceManyBody().strength(-130))
     .force("center", d3.forceCenter(400, 350))
-    .force("gravity", d3.forceManyBody().strength(-40))
+    .force("gravity", d3.forceManyBody().strength(100))
 
     // .force("distance", d3.forceManyBody(100))
 
@@ -374,6 +362,8 @@ class VizPanel extends React.Component {
         console.log('selected link', d);
 
       });
+
+      d3.forceCenter([400, 350]);
 
 var node = svg.selectAll(".node").data(this.state.allMovies).enter()
     .append("g").attr("class", "node")
@@ -408,7 +398,10 @@ var colors = {
   4: '#5C6672',
   5: '#3A435E',
   6: '#5D5179',
-  7: '#75B9BE'
+  7: '#75B9BE',
+  8: '#FBFEF9',
+  9: '#B5CBB7',
+  10: '#A18276'
 }
 
 if (label === 'image') {
@@ -453,7 +446,7 @@ if (label === 'image') {
 }
 
     node.on('click', d => {
-      console.log('SELECTED', d)
+      // console.log('SELECTED', d)
       let movie = d.title;
       var relatedLinks = this.state.blinks.filter(link => {
         return link.source.name === movie || link.target.name === movie;
@@ -461,7 +454,7 @@ if (label === 'image') {
 
       $('.link').css('display', 'none')
       $(`.${movie.replace(/\W+/g, " ")}.link`).toggle();
-      d3.forceRadial(30, 400, 350).strength(40)
+
       this.setState({
         selectedMovie: d
       }, () => {
@@ -471,7 +464,6 @@ if (label === 'image') {
     });
 
     node.on('mouseover', d => {
-      console.log('THIS NODE', d)
       this.setState({
         selectedMovie: d
       })
@@ -479,10 +471,10 @@ if (label === 'image') {
 
       sim.on("tick", function() {
 
-        link.attr("x1", function(d) { return d.source.x; })
-            .attr("y1", function(d) { return d.source.y; })
-            .attr("x2", function(d) { return d.target.x; })
-            .attr("y2", function(d) { return d.target.y; });
+        link.attr("x1", d =>  d.source.x > width / 2 ? Math.min(d.source.x-30, width-(circleSize+30)) : Math.max(circleSize+25, d.source.x+25))
+            .attr("y1", d =>  d.source.y > height / 2 ? Math.min(d.source.y-30, height-(circleSize+30)) : Math.max(circleSize+30, d.source.y+30))
+            .attr("x2", d =>  d.target.x > width / 2 ? Math.min(d.target.x-30, width-(circleSize+30)) : Math.max(circleSize+25, d.target.x+25))
+            .attr("y2", d => d.target.y > height / 2 ? Math.min(d.target.y-30, height-(circleSize+30)) : Math.max(circleSize+30, d.target.y+30))
 
         node.attr("transform", function(d) {
           var xcoord = d.x > width / 2 ? Math.min(d.x-30, width-(circleSize+30)) : Math.max(circleSize+25, d.x+25);
@@ -551,7 +543,7 @@ if (label === 'image') {
               </Row>
 
               <Row className="show-grid">
-                  <Surch allArtists={this.state.artistsLibrary} applySurchCb={this.applySurchCb} reset={this.resetSurchCb}/>
+                  <Surch allArtists={this.state.artistsLibrary} applySurchCb={this.applySurchCb} reset={this.resetSurchCb} history={this.state.history}/>
               </Row>
 
             </Col>

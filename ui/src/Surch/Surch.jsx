@@ -9,7 +9,9 @@ class Surch extends React.Component {
     super(props);
     this.state = {
       value: '',
-      surchedMovies: []
+      surchedMovies: [],
+      currHistory: [],
+      showHistory: false
     }
     this.surchMovies = this.surchMovies.bind(this);
     this.removeMovie = this.removeMovie.bind(this);
@@ -19,6 +21,27 @@ class Surch extends React.Component {
 
   componentWillMount() {
     // console.log('all artists', this.props.allArtists)
+  }
+
+  componentWillReceiveProps() {
+    var hist = this.props.history.slice();
+    console.log('history in surch', hist)
+    var show = hist.length > 3;
+    console.log('show hist? ', show)
+    var numToShow = hist.length - 3;
+    var ltdHist = hist.slice(0, numToShow)
+    var ltdHistTitles = ltdHist.reduce((acc, curr) => {acc.push(curr.main.title); return acc;}, []);
+    console.log('titles in history: ', ltdHistTitles)
+    var newSurchedMovies = this.state.surchedMovies.slice()
+    if (show) {
+      newSurchedMovies = newSurchedMovies.filter(mov => !ltdHistTitles.includes(mov))
+    }
+    console.log('mod surch arr: ', newSurchedMovies)
+    this.setState({
+      currHistory: ltdHist,
+      showHistory: show,
+      surchedMovies: newSurchedMovies
+    })
   }
 
   surchMovies(name) {
@@ -78,6 +101,25 @@ class Surch extends React.Component {
 
   }
 
+  restoreHistory = (movie) => {
+    var movTitles = this.state.currHistory.reduce((acc, curr) => { acc.push(curr.main.title); return acc;}, [])
+    var indOfMov = movTitles.indexOf(movie);
+    var newArr = this.state.currHistory.slice();
+    newArr.splice(indOfMov, 1);
+    var show = newArr.length > 3;
+    var newSurchedMovies = this.state.surchedMovies.slice()
+    if (show) {
+      newSurchedMovies = newSurchedMovies.filter(mov => !movTitles.includes(mov))
+    }
+    this.setState({
+      currHistory: newArr,
+      showHistory: show,
+      surchedMovies: newSurchedMovies
+    }, () => {
+      this.props.applySurchCb([movie]);
+    })
+  }
+
   render() {
     return (
       <div id='surchContainer'>
@@ -98,11 +140,11 @@ class Surch extends React.Component {
         <Row>
         <Col md={4}>
           {
-            this.state.surchedMovies.slice(0, 5).map((artist, i) => (
+            this.state.surchedMovies.slice(0, 5).map((movie, i) => (
               <div style={surchStyle} key={i}>
                 <Tag key={i} closable={true}
-                  afterClose={() => this.removeArtist(artist)} style={tagStyle}>
-                  {artist}
+                  afterClose={() => this.removeMovie(movie)} style={tagStyle}>
+                  {movie}
                 </Tag><br/><br/>
               </div>
             ))
@@ -110,19 +152,30 @@ class Surch extends React.Component {
         </Col>
 
         <Col md={4} style={surchStyle}>
-          {
-            this.state.surchedMovies.slice(5, 10).map((artist, i) => (
+          { this.state.showHistory ? (
+            this.state.currHistory.slice(0, 4).map((movie, i) => (
               <div style={surchStyle} key={i}>
-                <Tag key={i} closable={true}
-                  afterClose={() => this.removeArtist(artist)} style={tagStyle}>
-                  {artist}
+                <Tag key={i} closable={false}
+                  onClick={() => this.restoreHistory(movie.main.title)} style={tagStyle}>
+                  {movie.main.title}
                 </Tag><br/><br/>
               </div>
             ))
-          }
+          ) : ''}
         </Col>
 
-        <Col md={4}></Col>
+        <Col md={4}>
+          { this.state.showHistory ? (
+            this.state.currHistory.slice(4).map((movie, i) => (
+              <div style={surchStyle} key={i}>
+                <Tag key={i} closable={false}
+                  onClick={() => this.restoreHistory(movie.main.title)} style={tagStyle}>
+                  {movie.main.title}
+                </Tag><br/><br/>
+              </div>
+            ))
+          ) : ''}
+        </Col>
         </Row>
         <br/>
       </div>
@@ -141,8 +194,8 @@ const autosuggestStyle = {
 
 const surchStyle = {
   // padding: '10px',
-  marginLeft: '2%',
-  marginTop: '2%'
+  // marginLeft: '2%',
+  // marginTop: '2%'
 }
 
 const tagStyle = {

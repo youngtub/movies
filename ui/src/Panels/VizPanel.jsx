@@ -544,6 +544,7 @@ if (!this.state.initial) {
   initialSurch = (val) => {
     console.log('INITIAL', val)
     this.setState({
+      allMovies: [],
       initial: false,
       initSurch: val
     }, () => {

@@ -59,8 +59,8 @@ class App extends Component {
 
       <ScrollableAnchor id={'about'}>
         <div>
-        <br/><br/>
-        <hr/><br/><br/>
+        {/*<br/><br/>
+        <hr/><br/><br/>*/}
         </div>
       </ScrollableAnchor>
         {/*<Row style={aboutStyle}>

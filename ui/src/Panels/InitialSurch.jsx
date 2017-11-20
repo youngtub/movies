@@ -46,8 +46,10 @@ const initialSurchStyle = {
   height: '25vh',
   width: '13vw',
   marginTop: '25%',
-  marginLeft: '30%',
-  textAlign: 'center'
+  marginLeft: '40%',
+  textAlign: 'center',
+  zIndex: 2000,
+  position: 'absolute'
 }
 
 export default InitialSurch;

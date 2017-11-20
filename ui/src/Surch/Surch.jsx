@@ -19,8 +19,12 @@ class Surch extends React.Component {
     this.demoSurch = this.demoSurch.bind(this);
   }
 
-  componentWillMount() {
-    // console.log('all artists', this.props.allArtists)
+  componentDidMount() {
+    var initSurch = this.props.initSurch.split(' ').map(word => word.slice(0,1).toUpperCase()+word.slice(1)).join(' ');
+    var newSurchedMovies = [initSurch]
+    this.setState({
+      surchedMovies: newSurchedMovies
+    })
   }
 
   componentWillReceiveProps() {

@@ -20,7 +20,8 @@ class VizPanel extends React.Component {
       allMovies: [],
       surchCount: 0,
       history: [],
-      initial: true
+      initial: true,
+      initSurch: ''
     }
     this.generateCharts = this.generateCharts.bind(this);
     this.applySurchCb = this.applySurchCb.bind(this);
@@ -34,6 +35,9 @@ class VizPanel extends React.Component {
   componentDidMount() {
     axios.get('/test')
     .then((response) => console.log(response.data))
+    this.setState({
+      allMovies: initialSuggestions.nodes
+    }, this.generateCharts)
   };
 
   componentWillReceiveProps() {
@@ -264,7 +268,7 @@ class VizPanel extends React.Component {
         var newNodes = originalNodes.concat(primaryAndConnections);
         var newNodesTitles = newNodes.reduce((acc, curr) => {acc.push(curr.title); return acc;}, []);
         var indexOfNewPrimary = newNodesTitles.indexOf(mov.title);
-        var prevSelected = this.state.history[this.state.surchCount-1].main
+        var prevSelected = this.state.history[this.state.surchCount-1].main || null
         var indexOfPrimary = newNodesTitles.indexOf(prevSelected.title)
 
         // add links from M2S to all m2c's
@@ -328,9 +332,10 @@ class VizPanel extends React.Component {
         .attr("width", width)
         .attr("height", height);
 
-    var linkDistance = this.props.settings.linkDistance || 200;
+    var linkDistance = this.props.settings.linkDistance || 220;
     var circleSize = this.props.settings.circleSize || 22;
     var label = this.props.settings.label || 'image';
+    var center = this.state.initial ? [480, 350] : [400, 350]
 
     var sim = d3.forceSimulation(this.state.allMovies)
 
@@ -343,8 +348,8 @@ class VizPanel extends React.Component {
       // })
       )
     .force("charge", d3.forceManyBody().strength(-130))
-    .force("center", d3.forceCenter(400, 350))
-    .force("gravity", d3.forceManyBody().strength(100))
+    .force("center", d3.forceCenter(center[0], center[1]))
+    .force("gravity", d3.forceManyBody().strength(-20))
 
     // .force("distance", d3.forceManyBody(100))
 
@@ -415,13 +420,15 @@ if (label === 'image') {
       .style("stroke", (d) => d.search ? this.getFillColor(d.search.type) : null)
       .style("stroke-width", 3)
 
+if (!this.state.initial) {
   node.append("svg:image")
-      .attr('x', d => -this.getNodeSize(d)/2 - 7)
-      .attr('y', d => -this.getNodeSize(d)/2)
-      .attr('width', d => this.getNodeSize(d)*1.3)
-      .attr('height', d => this.getNodeSize(d)*1.3)
-      .attr("border-radius", '50%')
-      .attr("xlink:href", (d) => `${d.poster}`)
+  .attr('x', d => -this.getNodeSize(d)/2 - 7)
+  .attr('y', d => -this.getNodeSize(d)/2)
+  .attr('width', d => this.getNodeSize(d)*1.3)
+  .attr('height', d => this.getNodeSize(d)*1.3)
+  .attr("border-radius", '50%')
+  .attr("xlink:href", (d) => `${d.poster}`)
+}
 
       node.append("text")
           .attr("dx", -20).attr("dy", -37)
@@ -448,21 +455,31 @@ if (label === 'image') {
 }
 
     node.on('click', d => {
-      // console.log('SELECTED', d)
-      let movie = d.title;
-      var relatedLinks = this.state.blinks.filter(link => {
-        return link.source.name === movie || link.target.name === movie;
-      })
 
-      $('.link').css('display', 'none')
-      $(`.${movie.replace(/\W+/g, " ")}.link`).toggle();
+      if (this.state.initial) {
+        console.log('in initial node on click', d)
+        this.setState({
+          allMovies: [],
+          initial: false,
+          initSurch: d.title
+        }, () => {
+          this.sendRequestForMovies(d.title, 'primary')
+        })
+      } else {
+        let movie = d.title;
+        var relatedLinks = this.state.blinks.filter(link => {
+          return link.source.name === movie || link.target.name === movie;
+        })
 
-      this.setState({
-        selectedMovie: d
-      }, () => {
-        this.sendRequestForMovies(d.title, 'secondary');
-      })
+        $('.link').css('display', 'none')
+        $(`.${movie.replace(/\W+/g, " ")}.link`).toggle();
 
+        this.setState({
+          selectedMovie: d
+        }, () => {
+          this.sendRequestForMovies(d.title, 'secondary');
+        })
+      }
     });
 
     node.on('mouseover', d => {
@@ -527,7 +544,8 @@ if (label === 'image') {
   initialSurch = (val) => {
     console.log('INITIAL', val)
     this.setState({
-      initial: false
+      initial: false,
+      initSurch: val
     }, () => {
       this.sendRequestForMovies(val, 'primary');
     })
@@ -541,22 +559,23 @@ if (label === 'image') {
 
 
             <Col md={8} className="show-grid">
-              <div id='canvas' style={border}></div>
-              {this.state.initial ? <InitialSurch initialSurch={this.initialSurch} /> : ''}
+              <div id='canvas' style={border}>
+                {this.state.initial ? <InitialSurch initialSurch={this.initialSurch} /> : ''}
+              </div>
             </Col>
 
             <Col md={4} style={border}>
 
               <Row className="show-grid">
-                  <InfoPanel selectedMovie={this.state.selectedMovie} selectedLink={this.state.selectedLink}
+                  {this.state.initial ? '' : <InfoPanel selectedMovie={this.state.selectedMovie} selectedLink={this.state.selectedLink}
                     display={this.state.display} movies={this.state.movies}
                     links={this.state.links}
                     infoPanelCallback={this.infoPanelCallback}
-                    />
+                    />}
               </Row>
 
               <Row className="show-grid">
-                  <Surch allArtists={this.state.artistsLibrary} applySurchCb={this.applySurchCb} reset={this.resetSurchCb} history={this.state.history}/>
+                  {this.state.initial ? '' : <Surch allArtists={this.state.artistsLibrary} applySurchCb={this.applySurchCb} reset={this.resetSurchCb} history={this.state.history} initSurch={this.state.initSurch}/>}
               </Row>
 
             </Col>
@@ -578,6 +597,16 @@ if (label === 'image') {
 
 const border = {
   // border: 'solid black 1px'
+}
+
+const initialSuggestions = {
+  "nodes": [
+    {"title": "The Godfather", type: 'conn', surchCount: 1},
+    {"title": "Rango", type: 'conn', surchCount: 1},
+    {"title": "Ant man", type: 'conn', surchCount: 1},
+    {"title": "The Other Guys", type: 'conn', surchCount: 1},
+    {"title": "The Hobbit", type: 'conn', surchCount: 1}
+  ]
 }
 
 export default VizPanel;

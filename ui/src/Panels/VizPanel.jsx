@@ -2,6 +2,7 @@ import React from 'react';
 import * as d3 from 'd3';
 import InfoPanel from './InfoPanel';
 import Surch from '../Surch/Surch';
+import InitialSurch from './InitialSurch';
 import {Grid, Row, Col} from 'react-bootstrap';
 import $ from 'jquery';
 import axios from 'axios';
@@ -19,6 +20,7 @@ class VizPanel extends React.Component {
       allMovies: [],
       surchCount: 0,
       history: [],
+      initial: true
     }
     this.generateCharts = this.generateCharts.bind(this);
     this.applySurchCb = this.applySurchCb.bind(this);
@@ -522,14 +524,25 @@ if (label === 'image') {
     toast(`Nice one! You found a mutually related movie, ${mov.title || ''}`, {className: 'commonNotif'})
   }
 
+  initialSurch = (val) => {
+    console.log('INITIAL', val)
+    this.setState({
+      initial: false
+    }, () => {
+      this.sendRequestForMovies(val, 'primary');
+    })
+  }
+
   render() {
     return (
         <Grid fluid={true}>
 
           <Row>
 
+
             <Col md={8} className="show-grid">
               <div id='canvas' style={border}></div>
+              {this.state.initial ? <InitialSurch initialSurch={this.initialSurch} /> : ''}
             </Col>
 
             <Col md={4} style={border}>

@@ -349,7 +349,7 @@ class VizPanel extends React.Component {
       )
     .force("charge", d3.forceManyBody().strength(-130))
     .force("center", d3.forceCenter(center[0], center[1]))
-    .force("gravity", d3.forceManyBody().strength(-20))
+    .force("gravity", d3.forceManyBody().strength(50))
 
     // .force("distance", d3.forceManyBody(100))
 

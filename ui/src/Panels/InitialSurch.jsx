@@ -42,7 +42,7 @@ const inputStyle = {
 const initialSurchStyle = {
   backgroundColor: '#033860',
   border: 'solid black 1px',
-  borderRadius: '1000px',
+  borderRadius: '50%',
   height: '25vh',
   width: '13vw',
   marginTop: '25%',
